@@ -27,7 +27,10 @@
     </nav>
 
     <main>
-
+        <!-- Why section is used here instead of div:
+        this is a distinct thematic block of the page (the intro
+        text explaining the page's purpose), which is exactly
+        what section is meant to group -->
         <section>
             This page exists to let a visitor either book a visit to the Stradivarius store or leave feedback about a visit they already made. The form below covers both purposes at once: a visitor picks their goal — fitting, consultation, or feedback — using a radio button group, then fills in their contact details and, if relevant, an optional comment.
             The form fields were chosen to cover the required input types for this assignment while still making sense for a real store visit. The text, email, and phone fields collect contact information; the date field lets a visitor pick a preferred visit date; the number field asks how many people are coming; the select lets them indicate which department they are interested in; and the checkbox confirms consent to data processing. The textarea is there for any additional comment a visitor wants to add, such as details about their feedback or a specific request for the fitting.
@@ -35,6 +38,10 @@
         </section>
 
         <p>How it works:</p>
+        <!-- Why ol is used here instead of ul:
+        these steps must happen in this exact order (fill in,
+        choose a date, wait for a reply), and ol communicates
+        that sequence to both readers and assistive technology -->
         <ol start="1">
             <li>Fill in the form below</li>
             <li>Choose a convenient visit date</li>
@@ -48,6 +55,10 @@
         <br>
 
         <form method="get" action="#">
+            <!-- Why a nested fieldset is used for the radio group:
+            it visually and semantically groups the three purpose
+            options as one related choice, separate from the rest
+            of the form fields -->
             <fieldset>
                 <legend>Booking / Feedback details</legend>
 
