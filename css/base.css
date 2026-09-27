@@ -1,0 +1,61 @@
+/* base.css */
+:root {
+  --color-ink: #1a1a1a;
+  --color-paper: #faf7f2;
+  --color-accent: #6b5b45;
+  --color-border: rgba(26, 26, 26, 0.12);
+
+  --font-display: Georgia, "Times New Roman", Times, serif;
+  --font-body: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
+}
+
+h1,
+h2,
+h3,
+.navbar-brand {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+a:hover {
+  color: var(--color-ink);
+}
+
+/* Bootstrap override: brand accent instead of navbar-dark's default hover. */
+.navbar-dark .navbar-nav .nav-link:hover,
+.navbar-dark .navbar-nav .nav-link:focus {
+  color: var(--color-accent);
+}
+
+/* Decorative quote mark on the blockquote; Bootstrap has no equivalent. */
+blockquote {
+  position: relative;
+}
+
+blockquote::before {
+  content: "\201C";
+  position: absolute;
+  top: -0.75rem;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-display);
+  font-size: 3rem;
+  color: var(--color-accent);
+  background-color: var(--color-paper);
+  padding: 0 0.5rem;
+}
+
+mark {
+  background-color: rgba(107, 91, 69, 0.25);
+  color: var(--color-ink);
+}
