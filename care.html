@@ -130,7 +130,7 @@
                 <h2 id="style-inquiry">Request a Personal Style Consultation</h2>
                 <p>Have questions about matching autumn trends? Send an inquiry to our store advisors:</p>
 
-                <form method="post">
+                <form id="style-inquiry-form" method="post">
                     <div class="mb-3">
                         <label for="visitor-name" class="form-label">Your Name:</label>
                         <input type="text" class="form-control" id="visitor-name" name="visitor_name" required>
@@ -151,8 +151,9 @@
                         <label for="visitor-message" class="form-label">Your Question:</label>
                         <textarea class="form-control" id="visitor-message" name="visitor_message" rows="4"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-dark">Submit Inquiry</button>
+                    <button type="submit" id="care-submit-btn" class="btn btn-dark">Submit Inquiry</button>
                 </form>
+                <div id="form-response-message" class="mt-3"></div>
             </section>
 
             <aside>
