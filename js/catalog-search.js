@@ -1,26 +1,30 @@
-// js/catalog-search.js
-document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('catalog-search');
-    
-    // Ищем все карточки товаров внутри каталога более универсальным способом
-    const productCards = document.querySelectorAll('.product-card');
-
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            const query = e.target.value.toLowerCase().trim();
-
-            productCards.forEach(card => {
-                // Ищем элемент с названием товара внутри конкретной карточки
-                const titleElement = card.querySelector('.card-title');
-                const title = titleElement ? titleElement.textContent.toLowerCase() : '';
-
-                // Если строка поиска пуста или текст совпадает — показываем, иначе скрываем
-                if (title.includes(query)) {
-                    card.closest('.col').style.display = ''; // Показываем всю колонку с товаром
-                } else {
-                    card.closest('.col').style.display = 'none'; // Скрываем колонку
-                }
-            });
-        });
-    }
+$(function () {
+  'use strict';
+ 
+  const $search = $('#catalog-search');
+ 
+  if ($search.length === 0) {
+    return;
+  }
+  const $noResults = $('<p>')
+    .addClass('text-muted')
+    .text('No items match your search.')
+    .hide()
+    .insertAfter($search.closest('.mb-4'));
+ 
+  $search.on('input', function () {
+    const query = $(this).val().trim().toLowerCase();
+ 
+    $('#product-list .product-card').each(function () {
+      const title = $(this).find('.card-title').text().toLowerCase();
+      $(this).closest('.col').toggle(title.includes(query));
+    });
+    $('#product-list h3').each(function () {
+      const $heading = $(this);
+      $heading.toggle($heading.next('div').find('.col:visible').length > 0);
+    });
+ 
+    $noResults.toggle($('#product-list .col:visible').length === 0);
+  });
 });
+ 
