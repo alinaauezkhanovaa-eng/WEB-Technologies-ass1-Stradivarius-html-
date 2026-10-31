@@ -1,188 +1,264 @@
-function getCart() {
-    return JSON.parse(localStorage.getItem('stradivarius_cart')) || [];
-}
-
-function saveCart(cart) {
-    localStorage.setItem('stradivarius_cart', JSON.stringify(cart));
-    updateCartIconBadge();
-}
-
-function updateCartIconBadge() {
-    const cart = getCart();
-    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
-    const cartLinks = document.querySelectorAll('#nav-cart-link');
-    
-    cartLinks.forEach(link => {
-        let badge = link.querySelector('.cart-badge');
-        if (totalQty > 0) {
-            if (!badge) {
-                badge = document.createElement('span');
-                badge.className = 'cart-badge badge bg-danger rounded-pill ms-1';
-                link.appendChild(badge);
-            }
-            badge.textContent = totalQty;
-        } else if (badge) {
-            badge.remove();
-        }
-    });
-}
-
-function initCatalog() {
-    const addButtons = document.querySelectorAll('[id^="add-"]');
-    
-    addButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const card = e.target.closest('.product-card');
-            if (!card) return;
-
-            const id = card.id;
-            const name = card.querySelector('.card-title')?.textContent.trim();
-            const priceText = card.querySelector('.fw-bold')?.textContent.replace(/[^0-9]/g, '');
-            const price = parseInt(priceText, 10) || 0;
-            const img = card.querySelector('img')?.getAttribute('src');
-            const sizeSelect = card.querySelector('select');
-            const size = sizeSelect ? sizeSelect.value : '';
-
-            if (sizeSelect && !size) {
-                alert('Please select a size before adding to cart!');
-                sizeSelect.classList.add('is-invalid');
-                return;
-            }
-
-            if (sizeSelect) sizeSelect.classList.remove('is-invalid');
-
-            const cart = getCart();
-            const existingIndex = cart.findIndex(item => item.id === id && item.size === size);
-
-            if (existingIndex > -1) {
-                cart[existingIndex].qty += 1;
-            } else {
-                cart.push({ id, name, price, img, size, qty: 1 });
-            }
-
-            saveCart(cart);
-
-            const originalText = btn.textContent;
-            btn.textContent = 'Added! ✓';
-            btn.classList.replace('btn-dark', 'btn-success');
-            setTimeout(() => {
-                btn.textContent = originalText;
-                btn.classList.replace('btn-success', 'btn-dark');
-            }, 1200);
-        });
-    });
-}
-
-function initCartPage() {
-    const cartFilledSec = document.getElementById('cart-filled');
-    const cartEmptySec = document.getElementById('cart-empty');
-    const cartItemsUl = document.getElementById('cart-items');
-    const cartTotalSpan = document.getElementById('cart-total');
-    const sumProductsDd = document.getElementById('sum-products');
-    const sumCountSpan = document.getElementById('sum-count');
-    const orderSubmitBtn = document.getElementById('order-submit-btn');
-    const clearBtn = document.getElementById('cart-clear-btn');
-    const orderForm = document.getElementById('order-form');
-
-    if (!cartFilledSec || !cartEmptySec) return;
-
-    function renderCart() {
-        const cart = getCart();
-
-        if (cart.length === 0) {
-            cartFilledSec.style.display = 'none';
-            cartEmptySec.style.display = 'block';
-            return;
-        }
-
-        cartFilledSec.style.display = 'block';
-        cartEmptySec.style.display = 'none';
-
-        cartItemsUl.innerHTML = '';
-        let totalPrice = 0;
-        let totalCount = 0;
-
-        cart.forEach((item, index) => {
-            const itemTotal = item.price * item.qty;
-            totalPrice += itemTotal;
-            totalCount += item.qty;
-
-            const li = document.createElement('li');
-            li.className = 'd-flex gap-3 py-3 border-bottom';
-            li.innerHTML = `
-                <img src="${item.img}" alt="${item.name}" class="cart-thumb rounded" width="96" height="96">
-                <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between gap-2">
-                        <div>
-                            <h2 class="h6 mb-1">${item.name}</h2>
-                            <p class="small text-muted mb-0">Size: <span>${item.size || 'N/A'}</span></p>
-                        </div>
-                        <button type="button" class="btn-close" data-index="${index}" aria-label="Remove item"></button>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center mt-2">
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button type="button" class="btn btn-outline-dark btn-dec" data-index="${index}">&minus;</button>
-                            <span class="btn btn-outline-dark disabled px-3 opacity-100">${item.qty}</span>
-                            <button type="button" class="btn btn-outline-dark btn-inc" data-index="${index}">+</button>
-                        </div>
-                        <strong class="text-nowrap">${itemTotal.toLocaleString('ru-RU')}&nbsp;₸</strong>
-                    </div>
-                </div>
-            `;
-            cartItemsUl.appendChild(li);
-        });
-
-        const formattedTotal = totalPrice.toLocaleString('ru-RU') + ' ₸';
-        cartTotalSpan.innerHTML = formattedTotal;
-        sumProductsDd.innerHTML = formattedTotal;
-        sumCountSpan.textContent = totalCount;
-        if (orderSubmitBtn) {
-            orderSubmitBtn.textContent = `Place order • ${totalCount} pcs`;
-        }
+$(function () {
+  'use strict';
+ 
+  const STORAGE_KEY = 'stradivarius_cart';
+ 
+  function getCart() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    } catch (error) {
+      return [];
     }
-
-    cartItemsUl?.addEventListener('click', (e) => {
-        const cart = getCart();
-        const index = e.target.dataset.index;
-        if (index === undefined) return;
-
-        if (e.target.classList.contains('btn-close')) {
-            cart.splice(index, 1);
-        } else if (e.target.classList.contains('btn-inc')) {
-            cart[index].qty += 1;
-        } else if (e.target.classList.contains('btn-dec')) {
-            if (cart[index].qty > 1) {
-                cart[index].qty -= 1;
-            } else {
-                cart.splice(index, 1);
-            }
+  }
+ 
+  function saveCart(cart) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+    updateCartBadge();
+  }
+ 
+  function itemKey(item) {
+    return item.id + '|' + item.size;
+  }
+ 
+  function formatPrice(number) {
+    return number.toLocaleString('ru-RU') + '\u00a0\u20b8';
+  }
+ 
+  function updateCartBadge() {
+    const cart = getCart();
+    let totalQty = 0;
+    $.each(cart, function (index, item) {
+      totalQty += item.qty;
+    });
+ 
+    $('#nav-cart-link').each(function () {
+      const $link = $(this);
+      let $badge = $link.find('.cart-badge');
+ 
+      if (totalQty > 0) {
+        if ($badge.length === 0) {
+          $badge = $('<span>').addClass('cart-badge badge bg-danger rounded-pill ms-1').appendTo($link);
         }
-        saveCart(cart);
-        renderCart();
+        $badge.text(totalQty);
+      } else {
+        $badge.remove();
+      }
     });
-
-    clearBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
-        saveCart([]);
-        renderCart();
+  }
+ 
+  function showSizeError($select) {
+    let $error = $select.next('.size-error');    
+    if ($error.length === 0) {
+      $error = $('<div>')
+        .addClass('size-error text-danger small mb-2')
+        .text('Please choose a size first.')
+        .hide()
+        .insertAfter($select);
+    }
+    $error.slideDown(150);
+  }
+ 
+  function initCatalog() {
+    const $addButtons = $('[id^="add-"]');         
+ 
+    if ($addButtons.length === 0) {
+      return;
+    }
+ 
+    $addButtons.on('click', function () {
+      const $btn = $(this);
+      const $card = $btn.closest('.product-card'); 
+      const $select = $card.find('select');
+      const size = $select.val();
+ 
+      if ($select.length > 0 && !size) {
+        $select.addClass('is-invalid');
+        showSizeError($select);
+        return;
+      }
+ 
+      const cart = getCart();
+      const newItem = {
+        id: $card.attr('id'),
+        name: $card.find('.card-title').text().trim(),
+        price: parseInt($card.find('.fw-bold').first().text().replace(/[^0-9]/g, ''), 10) || 0,
+        img: $card.find('img').attr('src'),
+        size: size,
+        qty: 1
+      };
+ 
+      const existing = $.grep(cart, function (item) {
+        return itemKey(item) === itemKey(newItem);
+      })[0];
+ 
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push(newItem);
+      }
+      saveCart(cart);
+ 
+      if (!$btn.data('label')) {
+        $btn.data('label', $btn.text());
+      }
+      $btn.text('Added! \u2713').removeClass('btn-dark').addClass('btn-success');
+ 
+      setTimeout(function () {
+        $btn.text($btn.data('label')).removeClass('btn-success').addClass('btn-dark');
+      }, 1200);
     });
-
-    orderForm?.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const cart = getCart();
-        if (cart.length === 0) return;
-
-        alert('🎉 Order successfully placed! Thank you for shopping with Stradivarius Mega Silkway.');
-        saveCart([]);
-        renderCart();
-        orderForm.reset();
+ 
+    $('#product-list').on('change', 'select', function () {
+      $(this).removeClass('is-invalid').next('.size-error').slideUp(150);
     });
-
-    renderCart();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    updateCartIconBadge();
-    initCatalog();
-    initCartPage();
+  }
+ 
+ 
+  function initCartPage() {
+    const $filled = $('#cart-filled');
+    const $empty = $('#cart-empty');
+    const $list = $('#cart-items');
+ 
+    if ($filled.length === 0 || $empty.length === 0) {
+      return;
+    }
+ 
+    function buildItem(item) {
+      const $li = $('<li>')
+        .addClass('d-flex gap-3 py-3 border-bottom')
+        .attr('data-key', itemKey(item));
+ 
+      $('<img>')
+        .addClass('cart-thumb rounded')
+        .attr({ src: item.img, alt: item.name, width: 96, height: 96 })
+        .appendTo($li);
+ 
+      const $body = $('<div>').addClass('flex-grow-1').appendTo($li);
+      const $head = $('<div>').addClass('d-flex justify-content-between gap-2').appendTo($body);
+      const $titles = $('<div>').appendTo($head);
+ 
+      $('<h2>').addClass('h6 mb-1').text(item.name).appendTo($titles);
+      $('<p>').addClass('small text-muted mb-0').text('Size: ' + (item.size || 'N/A')).appendTo($titles);
+      $('<button>')
+        .addClass('btn-close')
+        .attr({ type: 'button', 'aria-label': 'Remove ' + item.name })
+        .appendTo($head);
+ 
+      const $foot = $('<div>').addClass('d-flex justify-content-between align-items-center mt-2').appendTo($body);
+      const $qty = $('<div>')
+        .addClass('btn-group btn-group-sm')
+        .attr({ role: 'group', 'aria-label': 'Quantity' })
+        .appendTo($foot);
+ 
+      $('<button>')
+        .addClass('btn btn-outline-dark cart-dec')
+        .attr({ type: 'button', 'aria-label': 'Decrease quantity' })
+        .html('&minus;')
+        .appendTo($qty);
+      $('<span>').addClass('btn btn-outline-dark disabled px-3 opacity-100').text(item.qty).appendTo($qty);
+      $('<button>')
+        .addClass('btn btn-outline-dark cart-inc')
+        .attr({ type: 'button', 'aria-label': 'Increase quantity' })
+        .text('+')
+        .appendTo($qty);
+ 
+      $('<strong>').addClass('text-nowrap').text(formatPrice(item.price * item.qty)).appendTo($foot);
+ 
+      return $li;
+    }
+ 
+    function render() {
+      const cart = getCart();
+      let totalPrice = 0;
+      let totalCount = 0;
+ 
+      $filled.toggle(cart.length > 0);
+      $empty.toggle(cart.length === 0);
+      if (cart.length > 0) {
+        $('.order-confirmation').remove();
+      }
+ 
+      $list.empty();
+      $.each(cart, function (index, item) {
+        totalPrice += item.price * item.qty;
+        totalCount += item.qty;
+        buildItem(item).appendTo($list);
+      });
+ 
+      $('#cart-total, #sum-products').text(formatPrice(totalPrice));
+      $('#sum-count').text(totalCount);
+      $('#order-submit-btn').text('Place order \u2022 ' + totalCount + ' pcs');
+    }
+ 
+    function removeRow($li) {
+      const key = $li.attr('data-key');
+ 
+      $li.slideUp(250, function () {
+        saveCart($.grep(getCart(), function (item) {
+          return itemKey(item) !== key;
+        }));
+        render();
+      });
+    }
+ 
+    function changeQty($li, delta) {
+      const key = $li.attr('data-key');
+      const cart = getCart();
+      const item = $.grep(cart, function (entry) {
+        return itemKey(entry) === key;
+      })[0];
+ 
+      if (item === undefined) {
+        return;
+      }
+      if (item.qty + delta < 1) {
+        removeRow($li);
+        return;
+      }
+      item.qty += delta;
+      saveCart(cart);
+      render();
+    }
+    $list.on('click', '.btn-close', function () {
+      removeRow($(this).closest('li'));
+    });
+ 
+    $list.on('click', '.cart-inc', function () {
+      changeQty($(this).closest('li'), 1);
+    });
+ 
+    $list.on('click', '.cart-dec', function () {
+      changeQty($(this).closest('li'), -1);
+    });
+ 
+    $('#cart-clear-btn').on('click', function (event) {
+      event.preventDefault();
+      saveCart([]);
+      render();
+    });
+ 
+    $('#order-form').on('submit', function (event) {
+      event.preventDefault();
+      if (getCart().length === 0) {
+        return;
+      }
+ 
+      saveCart([]);
+      $(this).trigger('reset');
+      render();
+ 
+      $('<p>')
+        .addClass('order-confirmation alert-success-custom fw-bold')
+        .text('Order placed! We hold your items for 48 hours at Stradivarius, Mega Silkway.')
+        .hide()
+        .prependTo($empty)
+        .fadeIn(400);
+    });
+ 
+    render();
+  }
+ 
+  updateCartBadge();
+  initCatalog();
+  initCartPage();
 });
