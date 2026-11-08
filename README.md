@@ -1,61 +1,65 @@
-# Stradivarius Mega Silkway Project — Midterm
+# Stradivarius Mega Silkway — Introduction to Web Technologies, endterm
 
-This repository contains a finished multi-page (6 pages) HTML5 and CSS3 website developed as a student project for the **Introduction to Web Technologies** course at Astana IT University.
+Student project about the Stradivarius store in Mega Silkway, Astana.
+Same repository and same pages as in the earlier assignments. Tag: `endterm`.
 
-### Team Members
-* **Auyezkhan Alina**
-* **Kharagussova Zhamilya**
-## Site Structure (Page List)
-1. `index.html` — Home / General info about Stradivarius Mega Silkway
-2. `about-stradivarius.html` — Store history, location, contacts, and opening hours
-3. `catalog.html` — Seasonal Autumn Collection Vibe & categories
-4. `care.html` — Garment care guide & Style inquiry form
-5. `visit-and-feedback.html` — Store visit booking & Feedback form
-6. `registration.html` — Account Registration and Login page
+Open `index.html` in a browser (or serve the folder with any static server). No build step, no server:
+the cart, the accounts and the signed-in visitor are kept in the visitor's own `localStorage`.
 
----
+## Plain JavaScript and jQuery are kept apart
 
-## Three User Journeys
-All three journeys can be completed end-to-end by a single visitor without server-side dependencies:
+| File | Kind | Page | What it does |
+|---|---|---|---|
+| `js/store.js` | plain JS | all pages | saved cart, accounts and session; cart badge and "Hi, name" link in the header |
+| `js/catalog.js` | plain JS | Collection | builds all 12 product cards from the `PRODUCTS` array with loops; delegated "Add to cart" handler |
+| `js/cart.js` | plain JS | Cart | renders the cart, quantity buttons (delegated), totals, validated order form, confirmation |
+| `js/registration.js` | plain JS | Sign up or Login | validated sign-up and login against saved accounts, log out |
+| `js/about-stradivarius.js` | plain JS | About the Store | opening-hours table built from `OPENING_HOURS`, open/closed status with time left |
+| `js/catalog-search.js` | jQuery | Collection | search + category filter, live counter, "nothing found" with a way back |
+| `js/care.js` | jQuery | Style & Care | collapsible care guide, step checklist with progress, validated inquiry form |
+| `js/visit-and-feedback.js` | jQuery | Visit & Feedback | validated visit / feedback form, purpose-dependent date limits and hint |
+| `js/form-utils.js` | jQuery helper | Care, Visit | shared validation and message helpers for the two jQuery forms |
 
-1. **Journey 1: Check Store Info & Hours**
-   * **Start:** Visitor lands on `index.html`.
-   * **Steps:** Navigates to `about-stradivarius.html` via navigation bar → Reads brand history → Scrolls to check opening hours and store address in Astana.
-   * **End:** Clicks email link to contact store managers.
+A feature is either plain JS or jQuery. The only contact point is the Collection page: `catalog.js` builds the
+cards, `catalog-search.js` filters the finished cards.
 
-2. **Journey 2: Explore Collection & Request Style Advice**
-   * **Start:** Visitor opens `catalog.html`.
-   * **Steps:** Browses autumn collection categories → Follows quick link to `care.html` → Reviews garment care table.
-   * **End:** Fills in and submits the "Personal Style Consultation" inquiry form.
+## What was added since each feature was last defended
 
-3. **Journey 3: Book a Fitting Visit**
-   * **Start:** Visitor enters via `visit-and-feedback.html` (or clicks floating "Contact us" button).
-   * **Steps:** Selects purpose ("Fitting") → Fills in full name, email, phone, guest count, and preferred date.
-   * **End:** Clicks "Submit" button and sees the designated response block prepared for confirmation.
+- **Collection**: the 12 cards are no longer in the HTML — they are built from an array; the missing-size error is shown
+  next to the select instead of `alert()`; limit of 10 pcs per line; the search got a category filter, a live
+  "Showing N of 12" counter and a "Show all items" button when nothing is found.
+- **Cart**: the order form was only `required` + `alert()`. Now name, phone and e-mail are validated in code
+  (trim, error under each wrong field, error disappears when fixed, confirmation only when all checks pass).
+  The confirmation lists the items, the total and the pickup deadline (now + 48 hours, as the page promises).
+  Quantity buttons are delegated and the "+" button stops at the limit. The form is pre-filled for a signed-in visitor.
+- **Sign up or Login**: the form only validated and said "OK". Now sign-up saves an account (duplicate e-mail is
+  rejected), login checks e-mail and password against the saved accounts, the header shows "Hi, name" on every
+  page, there is a "Log out" button. The dead "Continue with Google" button was removed (no server, cannot work).
+- **About the Store**: the two hand-written table rows were replaced by 7 rows built from `OPENING_HOURS`
+  (today's row is highlighted); the status line now says how long the store stays open / when it opens.
+- **Style & Care**: the page loaded no script at all, so the guide, the form and the checklist were dead.
+  Scripts are now connected; the step highlight became a checklist with a progress line; decorative table-row
+  hover and the always-on first highlighted step were removed.
+- **Visit & Feedback**: choosing the purpose now limits the date picker (feedback: today or earlier; fitting /
+  consultation: today or later) and shows a hint.
+- **Every page**: cart badge and account link in the header (`store.js`).
+- Removed `js/old-js-version.js` (an unused plain-JS copy of jQuery features).
 
----
+## Who wrote what
 
-## 🛠️ Preparation for JavaScript (Freeze Tag)
-As required for the midterm freeze:
-* **Unique IDs:** Every form, input, button, and dynamic block has a dedicated `id` attribute.
-* **Empty Containers:** Form response containers (`#visit-form-response`, `#care-form-response`) are placed in markup awaiting JS dynamic rendering.
-* **State Classes:** Utility classes (`.hidden`, `.is-invalid`, `.alert-success-custom`, `.alert-danger-custom`) are pre-defined in `base.css`.
+Pages and stylesheets follow the earlier assignments (`alina.css` / `zhamilya.css`).
 
----
+| Part | Author |
+|---|---|
+| Collection page, `catalog.js`, `catalog-search.js` | Alina |
+| Cart page, `cart.js`, `store.js` | Alina |
+| Sign up or Login, `registration.js` | Zhamilya |
+| Style & Care, `care.js` | Alina |
+| Home, About the Store, `about-stradivarius.js` | Zhamilya |
+| Visit & Feedback, `visit-and-feedback.js`, `form-utils.js` | Zhamilya |
 
-## Quality Pass List (Cross-Testing Findings)
-Conducted 2 days prior to deadline across different devices (Desktop & Mobile):
+## Known limits (no server)
 
-| Found By | Page / File | Issue Description | Fix Applied |
-| :--- | :--- | :--- | :--- |
-| Alina | `visit-and-feedback.html` | Missing `id` attribute on main form for JS targeting | Added `id="visit-form"` and empty response container |
-| Zhamilya | `registration.html` | "coming soon" disabled button text present | Removed "coming soon" label to comply with strict grading rules |
-| Alina | `care.html` | Missing `id` on consultation form button | Added `id="care-submit-btn"` |
-| Zhamilya | Mobile view (All) | Nav collapse behavior check | Verified layout wraps smoothly without horizontal scrollbar |
-
-
-## Technical Standards & Styling Summary
-1. **Stylesheet Architecture:** Clean separation into `base.css`, `alina.css`, and `zhamilya.css`. CSS custom properties (`:root`) used for design tokens.
-2. **Framework & Layout:** Built on Bootstrap 5.3.3 CDN supplemented with custom Flexbox and CSS Grid layers.
-3. **No Dead Links:** All links point to existing internal pages or valid external resources (`href="#"` avoided).
-4. **Validation:** 100% compliant with W3C Markup & W3C CSS Validators (Zero Errors).
+- Accounts, cart and session live only in the browser of the visitor; the password is stored as typed because there is no
+  server to hash it. Nothing is sent anywhere — every confirmation says so.
+- Orders are reservations for pickup in the store (pay in the store), as the cart page states.
