@@ -1,8 +1,9 @@
 $(function () {
   'use strict';
- 
-  const STORAGE_KEY = 'stradivarius_cart';
- 
+
+  var STORAGE_KEY = 'stradivarius_cart';
+  var HOLD_HOURS = 48;
+
   function getCart() {
     try {
       return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
@@ -10,255 +11,214 @@ $(function () {
       return [];
     }
   }
- 
+
   function saveCart(cart) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
-    updateCartBadge();
+    updateBadge();
   }
- 
-  function itemKey(item) {
-    return item.id + '|' + item.size;
+
+  function formatPrice(amount) {
+    return amount.toLocaleString('ru-RU') + '&nbsp;\u20B8';
   }
- 
-  function formatPrice(number) {
-    return number.toLocaleString('ru-RU') + '\u00a0\u20b8';
+
+  function priceText(amount) {
+    return amount.toLocaleString('ru-RU') + ' \u20B8';
   }
- 
-  function updateCartBadge() {
-    const cart = getCart();
-    let totalQty = 0;
-    $.each(cart, function (index, item) {
-      totalQty += item.qty;
-    });
- 
-    $('#nav-cart-link').each(function () {
-      const $link = $(this);
-      let $badge = $link.find('.cart-badge');
- 
-      if (totalQty > 0) {
-        if ($badge.length === 0) {
-          $badge = $('<span>').addClass('cart-badge badge bg-danger rounded-pill ms-1').appendTo($link);
-        }
-        $badge.text(totalQty);
-      } else {
-        $badge.remove();
+
+  function updateBadge() {
+    var total = 0;
+    $.each(getCart(), function (index, item) { total += item.qty; });
+
+    var $link = $('#nav-cart-link');
+    var $badge = $link.find('.cart-badge');
+    if (total > 0) {
+      if ($badge.length === 0) {
+        $badge = $('<span>', { 'class': 'cart-badge badge bg-danger rounded-pill ms-1' }).appendTo($link);
       }
-    });
-  }
- 
-  function showSizeError($select) {
-    let $error = $select.next('.size-error');    
-    if ($error.length === 0) {
-      $error = $('<div>')
-        .addClass('size-error text-danger small mb-2')
-        .text('Please choose a size first.')
-        .hide()
-        .insertAfter($select);
+      $badge.text(total);
+    } else {
+      $badge.remove();
     }
-    $error.slideDown(150);
   }
- 
-  function initCatalog() {
-    const $addButtons = $('[id^="add-"]');         
- 
-    if ($addButtons.length === 0) {
-      return;
-    }
- 
-    $addButtons.on('click', function () {
-      const $btn = $(this);
-      const $card = $btn.closest('.product-card'); 
-      const $select = $card.find('select');
-      const size = $select.val();
- 
-      if ($select.length > 0 && !size) {
-        $select.addClass('is-invalid');
-        showSizeError($select);
+
+  var $productList = $('#product-list');
+  if ($productList.length > 0) {
+
+    $productList.on('click', 'button[id^="add-"]', function () {
+      var $button = $(this);
+      if ($button.hasClass('btn-success')) { return; }
+
+      var $card = $button.closest('.product-card');
+      var $size = $card.find('select');
+      var size = $size.val();
+
+      if (!size) {
+        FormUtils.showError($size, 'Please select a size before adding to cart.');
         return;
       }
- 
-      const cart = getCart();
-      const newItem = {
-        id: $card.attr('id'),
-        name: $card.find('.card-title').text().trim(),
-        price: parseInt($card.find('.fw-bold').first().text().replace(/[^0-9]/g, ''), 10) || 0,
-        img: $card.find('img').attr('src'),
-        size: size,
-        qty: 1
-      };
- 
-      const existing = $.grep(cart, function (item) {
-        return itemKey(item) === itemKey(newItem);
-      })[0];
- 
+
+      var cart = getCart();
+      var id = $card.attr('id');
+      var existing = null;
+      $.each(cart, function (index, item) {
+        if (item.id === id && item.size === size) { existing = item; return false; }
+      });
+
       if (existing) {
         existing.qty += 1;
       } else {
-        cart.push(newItem);
+        cart.push({
+          id: id,
+          name: $card.find('.card-title').text().trim(),
+
+          price: Number($card.data('price')) || parseInt($card.find('.fw-bold').text().replace(/\D/g, ''), 10) || 0,
+          img: $card.find('img').attr('src'),
+          size: size,
+          qty: 1
+        });
       }
       saveCart(cart);
- 
-      if (!$btn.data('label')) {
-        $btn.data('label', $btn.text());
-      }
-      $btn.text('Added! \u2713').removeClass('btn-dark').addClass('btn-success');
- 
-      setTimeout(function () {
-        $btn.text($btn.data('label')).removeClass('btn-success').addClass('btn-dark');
-      }, 1200);
+
+      var originalText = $button.text();
+
+      $button.text('Added! \u2713').toggleClass('btn-dark btn-success').delay(1200).queue(function (next) {
+        $(this).text(originalText).toggleClass('btn-dark btn-success');
+        next();
+      });
     });
- 
-    $('#product-list').on('change', 'select', function () {
-      $(this).removeClass('is-invalid').next('.size-error').slideUp(150);
-    });
+
+    $productList.on('change', 'select', function () { FormUtils.clearError($(this)); });
   }
- 
- 
-  function initCartPage() {
-    const $filled = $('#cart-filled');
-    const $empty = $('#cart-empty');
-    const $list = $('#cart-items');
- 
-    if ($filled.length === 0 || $empty.length === 0) {
+
+  var $filled = $('#cart-filled');
+  var $emptyBlock = $('#cart-empty');
+  var $items = $('#cart-items');
+  if ($filled.length === 0 || $emptyBlock.length === 0) { updateBadge(); return; }
+
+  var $orderMessage = $('<div>', { id: 'order-response', 'aria-live': 'polite' }).prependTo('#cart-page');
+
+  function buildItem(item) {
+    var $li = $('<li>', { 'class': 'd-flex gap-3 py-3 border-bottom' });
+    $('<img>', { src: item.img, alt: item.name, 'class': 'cart-thumb rounded' }).attr({ width: 96, height: 96 }).appendTo($li);
+
+    var $body = $('<div>', { 'class': 'flex-grow-1' }).appendTo($li);
+    var $head = $('<div>', { 'class': 'd-flex justify-content-between gap-2' }).appendTo($body);
+
+    var $info = $('<div>').appendTo($head);
+
+    $('<h2>', { 'class': 'h6 mb-1' }).text(item.name).appendTo($info);
+    $('<p>', { 'class': 'small text-muted mb-0' }).text('Size: ' + (item.size || 'N/A')).appendTo($info);
+    $('<button>', { type: 'button', 'class': 'btn-close cart-remove', 'aria-label': 'Remove ' + item.name }).appendTo($head);
+
+    var $row = $('<div>', { 'class': 'd-flex justify-content-between align-items-center mt-2' }).appendTo($body);
+    var $group = $('<div>', { 'class': 'btn-group btn-group-sm', role: 'group', 'aria-label': 'Quantity' }).appendTo($row);
+
+    $('<button>', { type: 'button', 'class': 'btn btn-outline-dark cart-dec', 'aria-label': 'Decrease quantity' }).html('&minus;').appendTo($group);
+    $('<span>', { 'class': 'btn btn-outline-dark disabled px-3 opacity-100' }).text(item.qty).appendTo($group);
+    $('<button>', { type: 'button', 'class': 'btn btn-outline-dark cart-inc', 'aria-label': 'Increase quantity' }).text('+').appendTo($group);
+
+    $('<strong>', { 'class': 'text-nowrap' }).html(formatPrice(item.price * item.qty)).appendTo($row);
+    return $li;
+  }
+
+  function renderCart() {
+    var cart = getCart();
+
+    if (cart.length === 0) {
+      $filled.hide();
+      $emptyBlock.show();
       return;
     }
- 
-    function buildItem(item) {
-      const $li = $('<li>')
-        .addClass('d-flex gap-3 py-3 border-bottom')
-        .attr('data-key', itemKey(item));
- 
-      $('<img>')
-        .addClass('cart-thumb rounded')
-        .attr({ src: item.img, alt: item.name, width: 96, height: 96 })
-        .appendTo($li);
- 
-      const $body = $('<div>').addClass('flex-grow-1').appendTo($li);
-      const $head = $('<div>').addClass('d-flex justify-content-between gap-2').appendTo($body);
-      const $titles = $('<div>').appendTo($head);
- 
-      $('<h2>').addClass('h6 mb-1').text(item.name).appendTo($titles);
-      $('<p>').addClass('small text-muted mb-0').text('Size: ' + (item.size || 'N/A')).appendTo($titles);
-      $('<button>')
-        .addClass('btn-close')
-        .attr({ type: 'button', 'aria-label': 'Remove ' + item.name })
-        .appendTo($head);
- 
-      const $foot = $('<div>').addClass('d-flex justify-content-between align-items-center mt-2').appendTo($body);
-      const $qty = $('<div>')
-        .addClass('btn-group btn-group-sm')
-        .attr({ role: 'group', 'aria-label': 'Quantity' })
-        .appendTo($foot);
- 
-      $('<button>')
-        .addClass('btn btn-outline-dark cart-dec')
-        .attr({ type: 'button', 'aria-label': 'Decrease quantity' })
-        .html('&minus;')
-        .appendTo($qty);
-      $('<span>').addClass('btn btn-outline-dark disabled px-3 opacity-100').text(item.qty).appendTo($qty);
-      $('<button>')
-        .addClass('btn btn-outline-dark cart-inc')
-        .attr({ type: 'button', 'aria-label': 'Increase quantity' })
-        .text('+')
-        .appendTo($qty);
- 
-      $('<strong>').addClass('text-nowrap').text(formatPrice(item.price * item.qty)).appendTo($foot);
- 
-      return $li;
-    }
- 
-    function render() {
-      const cart = getCart();
-      let totalPrice = 0;
-      let totalCount = 0;
- 
-      $filled.toggle(cart.length > 0);
-      $empty.toggle(cart.length === 0);
-      if (cart.length > 0) {
-        $('.order-confirmation').remove();
-      }
- 
-      $list.empty();
-      $.each(cart, function (index, item) {
-        totalPrice += item.price * item.qty;
-        totalCount += item.qty;
-        buildItem(item).appendTo($list);
-      });
- 
-      $('#cart-total, #sum-products').text(formatPrice(totalPrice));
-      $('#sum-count').text(totalCount);
-      $('#order-submit-btn').text('Place order \u2022 ' + totalCount + ' pcs');
-    }
- 
-    function removeRow($li) {
-      const key = $li.attr('data-key');
- 
-      $li.slideUp(250, function () {
-        saveCart($.grep(getCart(), function (item) {
-          return itemKey(item) !== key;
-        }));
-        render();
-      });
-    }
- 
-    function changeQty($li, delta) {
-      const key = $li.attr('data-key');
-      const cart = getCart();
-      const item = $.grep(cart, function (entry) {
-        return itemKey(entry) === key;
-      })[0];
- 
-      if (item === undefined) {
-        return;
-      }
-      if (item.qty + delta < 1) {
-        removeRow($li);
-        return;
-      }
-      item.qty += delta;
-      saveCart(cart);
-      render();
-    }
-    $list.on('click', '.btn-close', function () {
-      removeRow($(this).closest('li'));
+    $filled.show();
+    $emptyBlock.hide();
+
+    $items.empty();
+    var totalPrice = 0;
+    var totalCount = 0;
+    $.each(cart, function (index, item) {
+      totalPrice += item.price * item.qty;
+      totalCount += item.qty;
+      $items.append(buildItem(item));
     });
- 
-    $list.on('click', '.cart-inc', function () {
-      changeQty($(this).closest('li'), 1);
-    });
- 
-    $list.on('click', '.cart-dec', function () {
-      changeQty($(this).closest('li'), -1);
-    });
- 
-    $('#cart-clear-btn').on('click', function (event) {
-      event.preventDefault();
-      saveCart([]);
-      render();
-    });
- 
-    $('#order-form').on('submit', function (event) {
-      event.preventDefault();
-      if (getCart().length === 0) {
-        return;
-      }
- 
-      saveCart([]);
-      $(this).trigger('reset');
-      render();
- 
-      $('<p>')
-        .addClass('order-confirmation alert-success-custom fw-bold')
-        .text('Order placed! We hold your items for 48 hours at Stradivarius, Mega Silkway.')
-        .hide()
-        .prependTo($empty)
-        .fadeIn(400);
-    });
- 
-    render();
+
+    $('#sum-count').text(totalCount);
+    $('#sum-products, #cart-total').html(formatPrice(totalPrice));
+    $('#order-submit-btn').text('Place order \u2022 ' + totalCount + ' pcs');
   }
- 
-  updateCartBadge();
-  initCatalog();
-  initCartPage();
+
+  function commit(cart) {
+    saveCart(cart);
+    renderCart();
+  }
+
+  $items.on('click', '.cart-remove, .cart-inc, .cart-dec', function () {
+    var $button = $(this);
+    var $li = $button.closest('li');
+    if ($li.is(':animated')) { return; }
+
+    var index = $li.index();
+    var cart = getCart();
+    if (!cart[index]) { return; }
+
+    if ($button.hasClass('cart-inc')) {
+      cart[index].qty += 1;
+      commit(cart);
+    } else if ($button.hasClass('cart-remove') || cart[index].qty === 1) {
+
+      $li.fadeOut(250, function () {
+        cart.splice(index, 1);
+        commit(cart);
+      });
+    } else {
+      cart[index].qty -= 1;
+      commit(cart);
+    }
+  });
+
+  $('#cart-clear-btn').on('click', function (event) {
+    event.preventDefault();
+    $items.fadeOut(200, function () {
+      $(this).show();
+      commit([]);
+    });
+  });
+
+  var $orderForm = $('#order-form');
+  var order = { name: $('#order-name'), phone: $('#order-phone'), email: $('#order-email') };
+
+  $orderForm.prop('noValidate', true);
+
+  $orderForm.on('submit', function (event) {
+    event.preventDefault();
+    if (getCart().length === 0) { return; }
+
+    var checks = [
+      [order.name, FormUtils.checkName(FormUtils.trimmed(order.name))],
+      [order.phone, FormUtils.checkPhone(FormUtils.trimmed(order.phone))],
+      [order.email, FormUtils.checkEmail(FormUtils.trimmed(order.email))]
+    ];
+    if (!FormUtils.applyChecks(checks, $orderMessage)) { return; }
+
+    var name = FormUtils.trimmed(order.name);
+    var lines = [];
+    var total = 0;
+    $.each(getCart(), function (index, item) {
+      total += item.price * item.qty;
+      lines.push(item.name + ' (' + item.size + ') \u00D7 ' + item.qty + ' \u2014 ' + priceText(item.price * item.qty));
+    });
+    lines.push('Total to pay in the store: ' + priceText(total));
+
+    var holdUntil = new Date(Date.now() + HOLD_HOURS * 60 * 60 * 1000);
+    var holdText = holdUntil.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    lines.push('Held for you until ' + holdText + ' at Stradivarius, Mega Silkway.');
+
+    this.reset();
+    commit([]);
+    FormUtils.showMessage($orderMessage, 'success', 'Order placed. Thank you, ' + name + '!', lines);
+  });
+
+  $orderForm.on('input change', 'input', function () { FormUtils.clearError($(this)); });
+
+  updateBadge();
+  renderCart();
 });
