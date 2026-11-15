@@ -18,7 +18,8 @@ const OPENING_HOURS = [
 
 const tableEl = document.querySelector('table.table');
 let statusEl = null;
-let tableRows = [];
+const rowsByDay = new Map(); // dayIndex -> <tr>
+const DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // table starts on Monday
 
 
 function getStoreNow(date) {
@@ -80,15 +81,27 @@ function getStatus(now) {
 }
 
 
-function getRowIndex(dayIndex) {
-  const isWeekday = dayIndex >= 1 && dayIndex <= 5;
-  return isWeekday ? 0 : 1;
+// Builds one table row per day from OPENING_HOURS (replaces the hand-written rows).
+function buildRows() {
+  const body = tableEl.querySelector('tbody');
+  body.replaceChildren();
+
+  for (const dayIndex of DISPLAY_ORDER) {
+    const hours = findHours(dayIndex);
+    const row = document.createElement('tr');
+    const day = document.createElement('td');
+    const time = document.createElement('td');
+    day.textContent = hours.dayName;
+    time.textContent = `${formatHour(hours.openHour)} \u2013 ${formatHour(hours.closeHour)}`;
+    row.append(day, time);
+    body.append(row);
+    rowsByDay.set(dayIndex, row);
+  }
 }
 
 function highlightToday(dayIndex) {
-  const todayRow = getRowIndex(dayIndex);
-  tableRows.forEach((row, index) => {
-    row.classList.toggle('active-state', index === todayRow);
+  rowsByDay.forEach((row, index) => {
+    row.classList.toggle('active-state', index === dayIndex);
   });
 }
 
@@ -111,7 +124,7 @@ function init() {
     return;
   }
 
-  tableRows = Array.from(tableEl.querySelectorAll('tbody tr'));
+  buildRows();
 
   statusEl = document.createElement('p');
   statusEl.classList.add('fw-bold');
