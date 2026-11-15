@@ -38,6 +38,60 @@ window.FormUtils = (function ($) {
     return '';
   }
 
+  // ---------- Kazakhstan phone: +77 and 11 digits in total ----------
+  // Valid: +7 (7XX) XXX-XX-XX  ->  digits "77XXXXXXXXX" (11 digits, starts with 77).
+  var KZ_PHONE_CHARS = /^[+\d\s()-]+$/;
+
+  function checkKzPhone(phone) {
+    if (phone === '') { return 'Please enter your phone number.'; }
+    if (!KZ_PHONE_CHARS.test(phone)) {
+      return 'Phone may contain only digits, spaces, brackets, hyphens and a leading +.';
+    }
+    var digits = phone.replace(/\D/g, '');
+    if (digits.length !== 11) {
+      return 'Kazakhstan number: +7 and 10 more digits (11 digits in total), for example +7 (777) 123-45-67.';
+    }
+    if (digits.slice(0, 2) !== '77') {
+      return 'The number must start with +77 (Kazakhstan mobile number).';
+    }
+    return '';
+  }
+
+  // "8777..." / "7777..." / "777..." / "+7 777..." -> "+7 (777) 123-45-67" while typing.
+  // Separators appear only when a digit follows them, so Backspace always works.
+  function formatKzPhone(raw) {
+    var digits = String(raw).replace(/\D/g, '');
+    if (digits === '') { return ''; }
+    if (digits.charAt(0) === '8') {
+      digits = '7' + digits.slice(1);
+    } else if (digits.charAt(0) !== '7') {
+      digits = '7' + digits;
+    }
+    digits = digits.slice(0, 11);
+
+    var rest = digits.slice(1);
+    var out = '+7';
+    if (rest.length > 0) { out += ' (' + rest.slice(0, 3); }
+    if (rest.length > 3) { out += ') ' + rest.slice(3, 6); }
+    if (rest.length > 6) { out += '-' + rest.slice(6, 8); }
+    if (rest.length > 8) { out += '-' + rest.slice(8, 10); }
+    return out;
+  }
+
+  function attachKzPhoneMask($field) {
+    $field.attr({ inputmode: 'tel', maxlength: 18, placeholder: '+7 (7XX) XXX-XX-XX' });
+    $field.on('input', function () {
+      var formatted = formatKzPhone($field.val());
+      if (formatted !== $field.val()) { $field.val(formatted); }
+    });
+    $field.on('focus', function () {
+      if ($field.val() === '') { $field.val('+7 (7'); }
+    });
+    $field.on('blur', function () {
+      if ($field.val() === '+7 (7' || $field.val() === '+7') { $field.val(''); }
+    });
+  }
+
   function todayString() {
     var now = new Date();
     function pad(number) { return (number < 10 ? '0' : '') + number; }
@@ -122,6 +176,9 @@ window.FormUtils = (function ($) {
     checkName: checkName,
     checkEmail: checkEmail,
     checkPhone: checkPhone,
+    checkKzPhone: checkKzPhone,
+    formatKzPhone: formatKzPhone,
+    attachKzPhoneMask: attachKzPhoneMask,
     todayString: todayString,
     showError: showError,
     clearError: clearError,
