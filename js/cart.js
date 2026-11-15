@@ -3,6 +3,7 @@ $(function () {
 
   var STORAGE_KEY = 'stradivarius_cart';
   var HOLD_HOURS = 48;
+  var MAX_QTY = 10; // one cart line cannot grow beyond this
 
   function getCart() {
     try {
@@ -64,6 +65,11 @@ $(function () {
         if (item.id === id && item.size === size) { existing = item; return false; }
       });
 
+      if (existing && existing.qty >= MAX_QTY) {
+        FormUtils.showError($size, 'Maximum ' + MAX_QTY + ' pcs of one item in the cart.');
+        return;
+      }
+
       if (existing) {
         existing.qty += 1;
       } else {
@@ -115,7 +121,7 @@ $(function () {
 
     $('<button>', { type: 'button', 'class': 'btn btn-outline-dark cart-dec', 'aria-label': 'Decrease quantity' }).html('&minus;').appendTo($group);
     $('<span>', { 'class': 'btn btn-outline-dark disabled px-3 opacity-100' }).text(item.qty).appendTo($group);
-    $('<button>', { type: 'button', 'class': 'btn btn-outline-dark cart-inc', 'aria-label': 'Increase quantity' }).text('+').appendTo($group);
+    $('<button>', { type: 'button', 'class': 'btn btn-outline-dark cart-inc', 'aria-label': 'Increase quantity' }).text('+').prop('disabled', item.qty >= MAX_QTY).appendTo($group);
 
     $('<strong>', { 'class': 'text-nowrap' }).html(formatPrice(item.price * item.qty)).appendTo($row);
     return $li;
@@ -161,6 +167,7 @@ $(function () {
     if (!cart[index]) { return; }
 
     if ($button.hasClass('cart-inc')) {
+      if (cart[index].qty >= MAX_QTY) { return; }
       cart[index].qty += 1;
       commit(cart);
     } else if ($button.hasClass('cart-remove') || cart[index].qty === 1) {
@@ -187,6 +194,14 @@ $(function () {
   var order = { name: $('#order-name'), phone: $('#order-phone'), email: $('#order-email') };
 
   $orderForm.prop('noValidate', true);
+  FormUtils.attachKzPhoneMask(order.phone);
+
+  // signed-in visitor: pre-fill name and e-mail
+  var session = window.Store ? Store.getSession() : null;
+  if (session !== null) {
+    order.name.val(session.name);
+    order.email.val(session.email);
+  }
 
   $orderForm.on('submit', function (event) {
     event.preventDefault();
@@ -194,7 +209,7 @@ $(function () {
 
     var checks = [
       [order.name, FormUtils.checkName(FormUtils.trimmed(order.name))],
-      [order.phone, FormUtils.checkPhone(FormUtils.trimmed(order.phone))],
+      [order.phone, FormUtils.checkKzPhone(FormUtils.trimmed(order.phone))],
       [order.email, FormUtils.checkEmail(FormUtils.trimmed(order.email))]
     ];
     if (!FormUtils.applyChecks(checks, $orderMessage)) { return; }
